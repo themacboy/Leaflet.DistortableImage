@@ -99,7 +99,7 @@ describe('L.DistortableCollection', function() {
     it('It should allow a locked image to be part of multiple image selection', function() {
       var img = overlay.getElement();
 
-      overlay.editing._toggleLock();
+      overlay.editing._toggleLockMode();
       chai.simulateShiftMousedown(img);
 
       expect(L.DomUtil.getClass(img)).to.include('selected');

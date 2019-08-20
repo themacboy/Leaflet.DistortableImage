@@ -264,57 +264,74 @@ L.DistortableImage.Edit = L.Handler.extend({
     };
   },
 
-  _toggleRotateScale: function() {
+  _rotateScaleMode: function() {
     var map = this._overlay._map;
 
-    if (this._mode === 'lock' || !this.hasTool(L.EditAction.ToggleRotateScale)) {
+    if (this._mode === 'lock' || this._mode === 'rotateScale') {
+       return;
+    }
+
+    if (!this.hasTool(L.RotateScaleAction)) {
       return;
     }
 
     map.removeLayer(this._handles[this._mode]);
-
-    /* Switch mode. */
-    if (this._mode === 'rotateScale') { this._mode = 'distort'; }
-    else { this._mode = 'rotateScale'; }
-
+    this._mode = 'rotateScale';
     map.addLayer(this._handles[this._mode]);
 
     this._showToolbar();
   },
 
-  _toggleScale: function() {
+  _distortMode: function() {
     var map = this._overlay._map;
 
-    if (this._mode === 'lock' || !this.hasTool(L.ScaleAction)) {
+    if (this._mode === 'lock' || this._mode === 'distort') {
+       return;
+    }
+
+    if (!this.hasTool(L.DistortAction)) {
       return;
     }
 
     map.removeLayer(this._handles[this._mode]);
-
-    if (this._mode === 'scale') {
-      this._mode = 'distort';
-    } else {
-      this._mode = 'scale';
-    }
-
+    this._mode = 'distort';
     map.addLayer(this._handles[this._mode]);
+    this._showToolbar();
   },
 
-  _toggleRotate: function() {
+  _scaleMode: function() {
     var map = this._overlay._map;
 
-    if (this._mode === 'lock' || !this.hasTool(L.RotateAction)) {
+    if (this._mode === 'lock' || this._mode === 'scale') {
+      return;
+    }
+
+    if (!this.hasTool(L.ScaleAction)) {
       return;
     }
 
     map.removeLayer(this._handles[this._mode]);
-    if (this._mode === 'rotate') { this._mode = 'distort'; }
-		else { this._mode = 'rotate'; }
-
+    this._mode = 'scale';
     map.addLayer(this._handles[this._mode]);
+    this._showToolbar();
   },
 
-  _toggleTransparency: function() {
+  _rotateMode: function() {
+    var map = this._overlay._map;
+
+    if (this._mode === 'lock' || this._mode === 'rotate') {
+      return;
+    }
+
+    if (!this.hasTool(L.RotateAction)) { return; }
+
+    map.removeLayer(this._handles[this._mode]);
+    this._mode = 'rotate';
+    map.addLayer(this._handles[this._mode]);
+    this._showToolbar();
+  },
+
+  _toggleOpacity: function() {
     var image = this._overlay.getElement(),
         opacity;
 
@@ -331,12 +348,12 @@ L.DistortableImage.Edit = L.Handler.extend({
     this._showToolbar();
   },
 
-  _toggleOutline: function() {
+  _toggleBorder: function() {
     var image = this._overlay.getElement(),
         opacity,
         outline;
     
-    if (!this.hasTool(L.EditAction.ToggleOutline)) {
+    if (!this.hasTool(L.ToggleBorderAction)) {
       return;
     }
 
@@ -351,38 +368,15 @@ L.DistortableImage.Edit = L.Handler.extend({
     this._showToolbar();
   },
 
-  _toggleLock: function() {
-    var map = this._overlay._map;
-
-    if (!this.hasTool(L.EditAction.ToggleLock)) {
-      return;
-    }
-
-    map.removeLayer(this._handles[this._mode]);
-
-    if (this._mode === 'lock') { this._unlock();
-    } else { this._lock(); }
-
-    map.addLayer(this._handles[this._mode]);
-
-    this._showToolbar();
+  _toggleLockMode: function() {
+    if (this._mode === 'lock') { this._unlock(); } 
+    else { this._lock(); }
   },
 
-    // compare this to using overlay zIndex
+  // compare this to using overlay zIndex
   _toggleOrder: function() {
-
-    if (!this.hasTool(L.EditAction.ToggleOrder)) {
-      return;
-    }
-
-    if (this._toggledImage) {
-      this._toggledImage = false;
-      this._overlay.bringToFront();
-    } else {
-      this._toggledImage = true;
-      this._overlay.bringToBack();
-    }
-    this._showToolbar();
+    if (this._toggledImage) { this._stackUp(); }
+    else { this._stackDown(); }
   },
 
   _removeOverlay: function () {
@@ -468,25 +462,53 @@ L.DistortableImage.Edit = L.Handler.extend({
     downloadable.src = overlay.options.fullResolutionSrc || overlay._image.src;
   },
 
-  _sendUp: function() {
+  _stackUp: function() {
+    if (!this._toggledImage || !this.hasTool(L.ToggleOrderAction)) {
+      return;
+    }
+    this._toggledImage = false;
     this._overlay.bringToFront();
+    this._showToolbar();
   },
 
-  _sendDown: function() {
+  _stackDown: function() {
+    if (this._toggledImage || !this.hasTool(L.ToggleOrderAction)) {
+      return;
+    }
+    this._toggledImage = true;
     this._overlay.bringToBack();
+    this._showToolbar();
   },
 
   _unlock: function() {
+    var map = this._overlay._map;
+
+    if (this._mode !== 'lock' || !this.hasTool(L.LockAction)) {
+      return;
+    }
+
+    map.removeLayer(this._handles[this._mode]);
     this._mode = 'distort';
     this._enableDragging();
+    map.addLayer(this._handles[this._mode]);
+    this._showToolbar();
   },
 
   _lock: function() {
+    var map = this._overlay._map;
+
+    if (this._mode === 'lock' || !this.hasTool(L.LockAction)) {
+      return;
+    }
+    
+    map.removeLayer(this._handles[this._mode]);
     this._mode = 'lock';
     if (this.dragging) {
       this.dragging.disable();
     }
     delete this.dragging;
+    map.addLayer(this._handles[this._mode]);
+    this._showToolbar();
   },
 
   _select: function(e) {
