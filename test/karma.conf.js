@@ -13,7 +13,7 @@ module.exports = function(config) {
       require('karma-mocha-reporter'),
       require('karma-phantomjs-launcher'),
       require('glfx'),
-      require('webgl-distort/dist/webgl-distort.js'),
+      require('webgl-distort/dist/webgl-distort.js')
     ],
 
     // frameworks to use
@@ -22,8 +22,8 @@ module.exports = function(config) {
 
     // list of files / patterns to load in the browser
     files: [
-      {pattern: 'examples/*.jpg', included: false, served: true},
-      {pattern: 'examples/*.png', included: false, served: true},
+      { pattern: 'examples/*.jpg', included: false, served: true },
+      { pattern: 'examples/*.png', included: false, served: true },
       'node_modules/leaflet/dist/leaflet-src.js',
       'node_modules/leaflet/dist/leaflet.css',
       'node_modules/leaflet-toolbar/dist/leaflet.toolbar.js',
@@ -35,12 +35,8 @@ module.exports = function(config) {
       'src/util/*.js',
       'src/edit/getEXIFdata.js',
       'src/edit/BoxSelector.js',
-      'src/edit/EditHandle.js',
-      'src/edit/LockHandle.js',
-      'src/edit/DistortHandle.js',
-      'src/edit/RotateScaleHandle.js',
-      'src/edit/RotateHandle.js',
-      'src/edit/ScaleHandle.js',
+      'src/edit/handles/EditHandle.js',
+      'src/edit/handles/*.js',
       'src/DistortableCollection.js',
       'src/DistortableImageOverlay.js',
       'src/iconsets/IconSet.js',
@@ -54,12 +50,12 @@ module.exports = function(config) {
       'src/edit/DistortableCollection.Edit.js',
       'test/SpecHelper.js',
       'test/src/*Spec.js',
-      'test/src/**/*Spec.js',
+      'test/src/**/*Spec.js'
     ],
 
     // so that karma can serve examples/example.png
     proxies: {
-      '/examples/': '/base/examples/',
+      '/examples/': '/base/examples/'
     },
 
     // test results reporter to use
@@ -68,7 +64,7 @@ module.exports = function(config) {
     reporters: ['mocha', 'coverage'],
 
     preprocessors: {
-      '../src/**/*.js': 'coverage',
+      '../src/**/*.js': 'coverage'
     },
 
     // web server port
@@ -97,10 +93,10 @@ module.exports = function(config) {
 
     coverageReporter: {
       reporters: [
-        {type: 'text', dir: '../coverage/', file: 'coverage.txt'},
-        {type: 'lcovonly', dir: '../coverage/'},
-        {type: 'html', dir: '../coverage/'},
-      ],
-    },
+        { type: 'text', dir: '../coverage/', file: 'coverage.txt' },
+        { type: 'lcovonly', dir: '../coverage/' },
+        { type: 'html', dir: '../coverage/' }
+      ]
+    }
   });
 };
