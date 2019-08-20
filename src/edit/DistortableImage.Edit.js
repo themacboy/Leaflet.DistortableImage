@@ -181,7 +181,7 @@ L.DistortableImage.Edit = L.Handler.extend({
     }
 
     if (this[handlerName] !== undefined && !this._overlay.options.suppressToolbar) {
-      if (this._selected) {
+      if (this._selected && this.toolbar) {
         this[handlerName].call(this);
       }
     }
@@ -267,9 +267,9 @@ L.DistortableImage.Edit = L.Handler.extend({
   _toggleRotateScale: function() {
     var map = this._overlay._map;
 
-    if (this._mode === 'lock') {
-      return;
-    }
+    // if (this._mode === 'lock' || !this.toolbar.hasRotateScale()) {
+    //   return;
+    // }
 
     map.removeLayer(this._handles[this._mode]);
 
@@ -285,7 +285,7 @@ L.DistortableImage.Edit = L.Handler.extend({
   _toggleScale: function() {
     var map = this._overlay._map;
 
-    if (this._mode === 'lock') {
+    if (this._mode === 'lock' || !this.toolbar.hasScale()) {
       return;
     }
 
@@ -303,7 +303,7 @@ L.DistortableImage.Edit = L.Handler.extend({
   _toggleRotate: function() {
     var map = this._overlay._map;
 
-    if (this._mode === 'lock') {
+    if (this._mode === 'lock' || !this.toolbar.hasRotate()) {
       return;
     }
 
@@ -318,6 +318,10 @@ L.DistortableImage.Edit = L.Handler.extend({
     var image = this._overlay.getElement(),
         opacity;
 
+    if (!this.toolbar.hasTransparency()) {
+      return;
+    }
+
     this._transparent = !this._transparent;
     opacity = this._transparent ? this.options.opacity : 1;
 
@@ -331,6 +335,10 @@ L.DistortableImage.Edit = L.Handler.extend({
     var image = this._overlay.getElement(),
         opacity,
         outline;
+    
+    if (!this.toolbar.hasOutline()) {
+      return;
+    }
 
     this._outlined = !this._outlined;
     outline = this._outlined ? this.options.outline : 'none';
@@ -340,6 +348,40 @@ L.DistortableImage.Edit = L.Handler.extend({
 
     image.style.outline = outline;
 
+    this._showToolbar();
+  },
+
+  _toggleLock: function() {
+    var map = this._overlay._map;
+
+    // if (!this.toolbar.hasLock()) {
+    //   return;
+    // }
+
+    map.removeLayer(this._handles[this._mode]);
+
+    if (this._mode === 'lock') { this._unlock();
+    } else { this._lock(); }
+
+    map.addLayer(this._handles[this._mode]);
+
+    this._showToolbar();
+  },
+
+    // compare this to using overlay zIndex
+  _toggleOrder: function() {
+
+    if (!this.toolbar.hasOrder()) {
+      return;
+    }
+
+    if (this._toggledImage) {
+      this._toggledImage = false;
+      this._overlay.bringToFront();
+    } else {
+      this._toggledImage = true;
+      this._overlay.bringToBack();
+    }
     this._showToolbar();
   },
 
@@ -362,19 +404,6 @@ L.DistortableImage.Edit = L.Handler.extend({
       this.dragging.disable();
     }
     delete this.dragging;
-  },
-
-  _toggleLock: function() {
-    var map = this._overlay._map;
-
-    map.removeLayer(this._handles[this._mode]);
-
-    if (this._mode === 'lock') { this._unlock();
-    } else { this._lock(); }
-
-    map.addLayer(this._handles[this._mode]);
-
-    this._showToolbar();
   },
 
   _select: function(e) {
@@ -511,7 +540,7 @@ L.DistortableImage.Edit = L.Handler.extend({
     var overlay = this._overlay,
         eventParents = overlay._eventParents;
 
-    if (this._mode === 'lock') {
+    if (this._mode === 'lock' || !this.toolbar.hasDelete()) {
       return;
     }
 
@@ -530,22 +559,14 @@ L.DistortableImage.Edit = L.Handler.extend({
     }
   },
 
-  // compare this to using overlay zIndex
-  _toggleOrder: function() {
-    if (this._toggledImage) {
-      this._toggledImage = false;
-      this._overlay.bringToFront();
-    } else {
-      this._toggledImage = true;
-      this._overlay.bringToBack();
-    }
-    this._showToolbar();
-  },
-
   // Based on https://github.com/publiclab/mapknitter/blob/8d94132c81b3040ae0d0b4627e685ff75275b416/app/assets/javascripts/mapknitter/Map.js#L47-L82
   _getExport: function() {
     var map = this._overlay._map;
     var overlay = this._overlay;
+
+    if (!this.toolbar.hasExport()) {
+      return;
+    }
 
     // make a new image
     var downloadable = new Image();
