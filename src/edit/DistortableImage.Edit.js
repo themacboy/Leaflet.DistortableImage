@@ -500,7 +500,7 @@ L.DistortableImage.Edit = L.Handler.extend({
     if (this._mode === 'lock' || !this.hasTool(L.LockAction)) {
       return;
     }
-    
+
     map.removeLayer(this._handles[this._mode]);
     this._mode = 'lock';
     if (this.dragging) {
