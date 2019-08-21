@@ -50,66 +50,65 @@ describe('L.DistortableCollection.Edit', function () {
         imgGroup.removeLayer(overlay3);
     });
 
-    // describe('#_deselectAll', function() {
-    //   it("Should remove the 'selected' class from all images", function() {
-    //     var img = overlay.getElement(),
-    //         img2 = overlay2.getElement();
+    describe('#_deselectAll', function() {
+      it('Should remove the \'selected\' class from all images', function() {
+        var img = overlay.getElement(),
+            img2 = overlay2.getElement();
 
-    //     L.DomUtil.addClass(img, 'selected');
-    //     L.DomUtil.addClass(img2, 'selected');
+        L.DomUtil.addClass(img, 'selected');
+        L.DomUtil.addClass(img2, 'selected');
 
-    //     map.fire('click');
+        map.fire('click');
 
-    //     expect(L.DomUtil.getClass(img)).to.not.include('selected');
-    //     expect(L.DomUtil.getClass(img2)).to.not.include('selected');
-    //   });
+        expect(L.DomUtil.getClass(img)).to.not.include('selected');
+        expect(L.DomUtil.getClass(img2)).to.not.include('selected');
+      });
 
-    //   it("Should hide all images' handles unless they're lock handles", function() {
-    //     var edit = overlay.editing,
-    //         edit2 = overlay2.editing;
+      it('Should hide all images\' handles unless they\'re lock handles', function() {
+        var edit = overlay.editing,
+            edit2 = overlay2.editing;
 
-    //     // turn on lock handles for one of the DistortableImages
-    //     edit2._toggleLock();
+        // turn on lock handles for one of the DistortableImageOverlay instances.
+        edit2._toggleLockMode();
 
-    //     // then trigger _deselectAll
-    //     map.fire('click');
+        // then trigger _deselectAll
+        map.fire('click');
 
-    //     var distortHandleState = [];
-    //     edit._handles['distort'].eachLayer(function(handle) {
-    //       distortHandleState.push(handle._icon.style.opacity);
-    //     });
+        var distortHandleState = [];
+        edit._handles['distort'].eachLayer(function(handle) {
+          distortHandleState.push(handle._icon.style.opacity);
+        });
 
-    //     var lockHandleState = [];
-    //     edit2._handles['lock'].eachLayer(function(handle) {
-    //       lockHandleState.push(handle._icon.style.opacity);
-    //     });
+        var lockHandleState = [];
+        edit2._handles['lock'].eachLayer(function(handle) {
+          lockHandleState.push(handle._icon.style.opacity);
+        });
 
-    //     expect(distortHandleState).to.deep.equal(['0', '0', '0', '0']);
-    //     // opacity for lockHandles is unset because we never altered it to hide it as part of deselection
-    //     expect(lockHandleState).to.deep.equal(['', '', '', '']);
-    //   });
+        expect(distortHandleState).to.deep.equal(['0', '0', '0', '0']);
+        // opacity for lockHandles is unset because we never altered it to hide it as part of deselection
+        expect(lockHandleState).to.deep.equal(['', '', '', '']);
+      });
 
-    //   it("Should remove all images' individual toolbar instances regardless of lock handles", function() {
-    //     var edit = overlay.editing,
-    //       edit2 = overlay2.editing;
+      it('Should remove all images\' individual toolbar instances regardless of lock handles', function() {
+        var edit = overlay.editing,
+            edit2 = overlay2.editing;
 
-    //     // turn on lock handles for one of the DistortableImages
-    //     edit2._toggleLock();
+        edit2._toggleLockMode();
 
-    //     // select both images to initially create individual toolbar instances (single selection interface)
-    //     chai.simulateClick(overlay.getElement());
-    //     chai.simulateClick(overlay2.getElement());
+        // select both images to initially create individual toolbar instances (single selection interface)
+        chai.simulateClick(overlay.getElement());
+        chai.simulateClick(overlay2.getElement());
 
-    //     expect(edit.toolbar).to.not.be.false;
-    //     expect(edit2.toolbar).to.not.be.false;
+        expect(edit.toolbar).to.not.be.false;
+        expect(edit2.toolbar).to.not.be.false;
 
-    //     // then trigger _deselectAll
-    //     map.fire('click');
+        // then trigger _deselectAll
+        map.fire('click');
 
-    //     expect(edit.toolbar).to.be.false;
-    //     expect(edit2.toolbar).to.be.false;
-    //   });
-    // });
+        expect(edit.toolbar).to.be.false;
+        expect(edit2.toolbar).to.be.false;
+      });
+    });
 
     describe('#_addToolbar', function () {
         it('is invoked on the click event that follows mousedown multi-select', function () {
