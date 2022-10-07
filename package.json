@@ -11,7 +11,7 @@
     "serve:dev": "cross-env NODE_ENV=development webpack-dev-server",
     "test": "grunt test",
     "watch:test": "grunt karma:development:start && grunt watch",
-    "build": "cross-env NODE_ENV=production grunt build",
+    "build": "cross-env NODE_ENV=production grunt build --force",
     "linter": "grunt eslint"
   },
   "browserslist": "> 0.2%, IE 9, last 2 versions",

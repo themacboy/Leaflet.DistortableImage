@@ -1,10 +1,10 @@
-L.ColorizeAction = L.EditAction.extend({
+L.ColorizeSVGAction = L.EditAction.extend({
   initialize: function(map, overlay, options) {
     var edit = overlay.editing;
     var mode = edit._mode;
     var use;
     var tooltip;
-
+    /*
     if (edit._transparent) {
       use = 'opacity_empty';
       tooltip = overlay.options.translation.makeImageOpaque;
@@ -12,13 +12,13 @@ L.ColorizeAction = L.EditAction.extend({
       use = 'opacity';
       tooltip = overlay.options.translation.makeImageTransparent;
     }
-
+    */
     options = options || {};
     options.toolbarIcon = {
       svg: true,
-      html: use,
-      tooltip: tooltip,
-      className: mode === 'lock' ? 'disabled' : '',
+      html: 'colours_cercle',
+      tooltip: overlay.options.colorize,
+      className: 'colorizeSVG',
     };
 
     L.DistortableImage.action_map.o = mode === 'lock' ? '' : '_toggleOpacity';
@@ -29,9 +29,10 @@ L.ColorizeAction = L.EditAction.extend({
   addHooks: function() {
     var edit = this._overlay.editing;
     var link = this._link;
-
+    /*
     L.IconUtil.toggleXlink(link, 'opacity', 'opacity_empty');
     L.IconUtil.toggleTitle(link, 'Make Image Transparent', 'Make Image Opaque');
     edit._toggleOpacity();
+    */
   },
 });
