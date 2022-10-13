@@ -25,6 +25,7 @@ L.Utils = {
         'Are you sure? This image will be permanently deleted from the map.',
       confirmImagesDeletes:
         'Are you sure? These images will be permanently deleted from the map.',
+      colorizesvgImage: 'Colorize vector SVG images.',
     };
 
     if (!this.options.translation) {

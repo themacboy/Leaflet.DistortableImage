@@ -17,7 +17,6 @@ L.DistortableCollection.addInitHook(function() {
     L.DeleteAction,
     L.LockAction,
     L.UnlockAction,
-    L.ColorizeSVGAction,
   ];
 
   // all possible modes
