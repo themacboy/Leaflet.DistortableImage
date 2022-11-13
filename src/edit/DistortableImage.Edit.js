@@ -15,6 +15,7 @@ L.DistortableImage.Edit = L.Handler.extend({
     this._transparent = false;
     this._outlined = false;
     this._opacity = 1;
+    this._colour = 'currentcolor';
 
     L.setOptions(this, options);
 
@@ -375,14 +376,14 @@ L.DistortableImage.Edit = L.Handler.extend({
 
   _setColour(o) {
     const image = this._overlay.getElement();
-    this.colour = o;
+    this._colour = o;
 
     if (!this.hasTool(L.ColorizesvgAction)) { return; }
 
     const classes = L.DomUtil.getClass(image).split(',');
     classes.filter( cla => !(cla.includes('colour_')));
-    L.DomUtil.setClass(image, [...classes.filter( cla => !(cla.includes('colour_'))), this.colour].join(' '));
-    image.setAttribute('data-colour', this.colour);
+    L.DomUtil.setClass(image, [...classes.filter( cla => !(cla.includes('colour_'))), this._colour].join(' '));
+    image.setAttribute('data-colour', this._colour);
 
     this._refresh();
   },
