@@ -374,6 +374,20 @@ L.DistortableImage.Edit = L.Handler.extend({
     this._refresh();
   },
 
+  _setColour(o) {
+    const image = this._overlay.getElement();
+    this.colour = o;
+
+    if (!this.hasTool(L.ColorizesvgAction)) { return; }
+
+    const classes = L.DomUtil.getClass(image).split(',');
+    classes.filter( cla => !(cla.includes('colour_')));
+    L.DomUtil.setClass(image, [...classes.filter( cla => !(cla.includes('colour_'))), this.colour].join(' '));
+    image.setAttribute('data-colour', this.colour);
+
+    this._refresh();
+  },
+
   _toggleBorder() {
     const image = this._overlay.getElement();
     let outline;
