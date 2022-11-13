@@ -88,27 +88,27 @@ colours = colours.map((o) => {
             const parser = new DOMParser();
             const svg = parser.parseFromString(svgString, 'image/svg+xml').documentElement;
 
-            if (svg.getAttribute('fill') === '000' || svg.getAttribute('fill') === '#030104') { svg.setAttribute(o); };
-            if (svg.getAttribute('stroke') === '000' || svg.getAttribute('fill') === '#030104') { svg.setAttribute(o); };
+            if (!svg.getAttribute('color') || svg.getAttribute('color') === '000' || svg.getAttribute('color') === '#030104') { svg.setAttribute('color', o); };
+            if (!svg.getAttribute('fill') || svg.getAttribute('fill') === '000' || svg.getAttribute('fill') === '#030104') { svg.setAttribute('fill', o); };
+            if (!svg.getAttribute('stroke') || svg.getAttribute('stroke') === '000' || svg.getAttribute('stroke') === '#030104') { svg.setAttribute('stroke', o); };
 
             svg.querySelectorAll('[fill]').forEach((elem) => {
-              console.log( elem.getAttribute('fill') );
-
               if (elem.getAttribute('fill') === '#000' || elem.getAttribute('fill') === '#030104') {
                 elem.setAttribute('fill', o);
               }
             });
 
             svg.querySelectorAll('[stroke]').forEach((elem) => {
-              console.log( elem.getAttribute('stroke') );
-
               if (elem.getAttribute('stroke') === '#000' || elem.getAttribute('fill') === '#030104') {
                 elem.setAttribute('stroke', o);
               }
             });
-            
-            img.src = 
 
+            img.src = URL.createObjectURL(new Blob([svg], {type: 'image/svg+xml'}));
+            console.log(URL.createObjectURL(new Blob([svg], {type: 'image/svg+xml'})));
+            console.log(svg);
+            document.body.appendChild(img);
+            document.body.appendChild(svg);
           });
     },
   });
