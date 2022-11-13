@@ -14,8 +14,7 @@ L.DistortableImage.Edit = L.Handler.extend({
     this._mode = overlay.options.mode;
     this._transparent = false;
     this._outlined = false;
-    this._opacity = 1;
-    this._colour = 'currentcolor';
+    this._opacity = options.opacity;
 
     L.setOptions(this, options);
 
