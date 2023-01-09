@@ -77,13 +77,17 @@ colours = colours.map((o) => {
     addHooks() {
       this._overlay.editing._setColour(`colour_${o}`);
 
-      let img = this._overlay.getElement();
+      const img = this._overlay.getElement();
+      console.log(img.src);
+      console.log(img.alt);
+      console.log(this._overlay.options.alt);
+      console.log(img.getAttribute('alt'));
 
-      fetch(img.src)
+      fetch(this._overlay.options.alt)
           .then(response => response.text())
-          .then((svgString) => {
+          .then( (response) => {
             const parser = new DOMParser();
-            const svg = parser.parseFromString(svgString, 'image/svg+xml').documentElement;
+            const svg = parser.parseFromString(response, 'image/svg+xml').documentElement;
 
             if (!svg.getAttribute('color') || svg.getAttribute('color') === '000' || svg.getAttribute('color') === '#030104') { svg.setAttribute('color', o); };
             if (!svg.getAttribute('fill') || svg.getAttribute('fill') === '000' || svg.getAttribute('fill') === '#030104') { svg.setAttribute('fill', o); };
@@ -96,16 +100,18 @@ colours = colours.map((o) => {
             });
 
             svg.querySelectorAll('[stroke]').forEach((elem) => {
-              if (elem.getAttribute('stroke') === '#000' || elem.getAttribute('fill') === '#030104') {
+              if (elem.getAttribute('stroke') === '#000' || elem.getAttribute('stroke') === '#030104') {
                 elem.setAttribute('stroke', o);
               }
             });
 
-            img.src = URL.createObjectURL(new Blob([svg], {type: 'image/svg+xml'}));
-            console.log(URL.createObjectURL(new Blob([svg], {type: 'image/svg+xml'})));
-            console.log(svg);
-            document.body.appendChild(img);
-            document.body.appendChild(svg);
+            img.src = URL.createObjectURL( new Blob( [new XMLSerializer().serializeToString( svg )], {type: 'image/svg+xml'} ) );
+
+            this._overlay._reset();
+            /*
+            t_parametre.corners.forEach ((t_corner, t_index) => {
+              t_element.setCorner (t_index, L.latLng (t_corner));
+            });*/
           });
     },
   });
@@ -120,8 +126,8 @@ L.ColorizesvgToolbar2 = L.Toolbar2.extend({
   },
 
   appendToContainer(container) {
-    let baseClass = this.constructor.baseClass + '-' + this._calculateDepth();
-    let className = baseClass + ' ' + this.options.className;
+    const baseClass = this.constructor.baseClass + '-' + this._calculateDepth();
+    const className = baseClass + ' ' + this.options.className;
     let Action; let action;
     let i; let j; let l; let m;
 
