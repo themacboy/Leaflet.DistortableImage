@@ -1,3 +1,5 @@
+import {Paginator} from './modules/paginator.js';
+
 let map;
 const welcomeModal = document.getElementById('welcomeModal');
 const tileMap = document.getElementById('map');
@@ -8,6 +10,12 @@ const input = document.getElementById('input');
 const responseText = document.getElementById('response');
 const imageContainer = document.getElementById('imgContainer');
 const mapToggle = document.getElementById('mapToggle');
+let imageCount = 0;
+let fetchedFrom;
+let fetchedImages;
+let currPagination; // currPagination is used to initiate the Paginator Class
+let sidebarOpen = false;
+let mapReconstructionMode = false;
 
 const setupMap = () => {
   map = L.map('map').setView([51.505, -0.09], 13);
@@ -16,7 +24,12 @@ const setupMap = () => {
 
   map.addGoogleMutant();
   map.whenReady(() => {
-    new bootstrap.Modal(welcomeModal).show();
+    if (isJsonDetected(location.href)) {
+      new bootstrap.Modal(welcomeModal).hide(); 
+      mapReconstructionMode = true;
+      return;
+    }
+    new bootstrap.Modal(welcomeModal).show(); 
   });
 };
 
@@ -47,7 +60,6 @@ function extractKey() {
   else if (input.value.includes('http://')) {
     getUrl = input.value.replace('http:', 'https:');
     input.value = getUrl;
-    console.log('input', input.value);
     showImages(getUrl);
   }
   else
@@ -56,10 +68,6 @@ function extractKey() {
     showImages(getUrl);
   }
 }
-
-let imageCount = 0;
-let fetchedFrom;
-
 
 const renderImages = (fullResImages, url) => {
   fullResImages.forEach((file) => {
@@ -89,8 +97,10 @@ const renderImages = (fullResImages, url) => {
 // renders thumbnails or images in thumbnail size
 const renderThumbnails = (thumbnails = [], url, fullResImgs) => {
   const imagesToRender = thumbnails || fullResImgs;
+  const currentImages = currPagination.imagesForPage(imagesToRender);
+  imageCount = imagesToRender.length;
 
-  imagesToRender.forEach((file) => {
+  currentImages.forEach((file) => {
     const imageRow = document.createElement('div');
     const image = new Image(65, 65);
     const placeButton = document.createElement('a');
@@ -115,9 +125,13 @@ const renderThumbnails = (thumbnails = [], url, fullResImgs) => {
     image.src = `${url.replace('metadata', 'download')}/${file.name}`;
     imageRow.classList.add('col-4', 'd-flex', 'flex-column', 'p-2', 'align-items-center');
     imageRow.append(image, placeButton, fileName);
+    // store the full-resolution image URL in a "data-original" attribute
+    image.setAttribute('data-original', `${url.replace('metadata', 'download')}/${thumbnails ? file.original : file.name}`);
+    image.src = `${url.replace('metadata', 'download')}/${file.name}`;
+    imageRow.classList.add('col-4', 'd-flex', 'flex-column', 'p-2', 'align-items-center');
+    imageRow.append(image, placeButton, fileName);
     imageContainer.appendChild(imageRow);
     imageContainer.setAttribute('class', 'row');
-    imageCount++;
   });
 };
 
@@ -127,28 +141,19 @@ function showImages(getUrl) {
   axios.get(url)
       .then((response) => {
         if (response.data.files && response.data.files.length != 0) {
-          const imageThumbnails = response.data.files.filter(file => file.source === 'derivative');
-          const fullResImages = response.data.files.filter(file => file.format === 'PNG' || file.format === 'JPEG');
-          count = response.data.files.filter((file)=> {
-            if (file.format === 'PNG' || file.format === 'JPEG' || file.format.includes('Thumb')) return file;
-          }).length;
-          if (count > 100) {
-            if (imageThumbnails.length === fullResImages.length) {
-              renderThumbnails(imageThumbnails, url, fullResImages);
-            } else {
-              renderThumbnails(false, url, fullResImages);
-            }
-          } else {
-            renderImages(fullResImages, url);
-          }
+          fetchedImages = response.data.files; // <---- all files fetched
+          // runs a check to clear the sidebar, eventListeners and reset imageCount
+          if (currPagination) currPagination.clear(); imageContainer.textContent = ''; imageCount = 0;
+          currPagination = new Paginator(url, fetchedImages);
+          currPagination.processImgs(renderThumbnails, renderImages);
           responseText.innerHTML = imageCount ? `${imageCount} image(s) fetched successfully from ${fetchedFrom.innerHTML}.` : 'No images found in the link provided...';
         } else {
           responseText.innerHTML = 'No images found in the link provided...';
         }
       })
       .catch((error) => {
-        responseText.innerHTML = 'Uh-oh! Something\'s not right with the link provided!';
         console.log(error);
+        responseText.innerHTML = 'Uh-oh! Something\'s not right with the link provided!';
       })
       .finally(() => {
         bootstrap.Modal.getInstance(welcomeModal).hide();
@@ -157,6 +162,7 @@ function showImages(getUrl) {
 
 welcomeModal.addEventListener('hidden.bs.modal', (event) => {
   new bootstrap.Offcanvas(sidebar).show();
+  sidebarOpen = true;
 });
 
 restoreWelcomeModal.addEventListener('click', (event) => {
@@ -166,16 +172,139 @@ restoreWelcomeModal.addEventListener('click', (event) => {
 
 mapToggle.addEventListener('click', (event) => {
   new bootstrap.Offcanvas(sidebar).show();
+  sidebarOpen = true;
 });
 
 tileMap.addEventListener('click', (event) => {
-  bootstrap.Offcanvas.getInstance(sidebar).hide();
+  if (sidebarOpen) {
+    bootstrap.Offcanvas.getInstance(sidebar).hide();
+  }
+});
+
+function getImageName(imageURL) {
+  const startIndex = imageURL.lastIndexOf('/') + 1;
+  const endIndex = imageURL.lastIndexOf('.');
+  const imageName = imageURL.substring(startIndex, endIndex);
+
+  return imageName;
+}
+
+function extractJsonFromUrlParams(url) { 
+  const startIndex = url.lastIndexOf('=');
+  const jsonDownloadURL = url.slice(startIndex + 1);
+
+  return jsonDownloadURL;
+}
+
+function isJsonDetected(url) {
+  if (url.includes('?json=')) {
+    const startIndex = url.lastIndexOf('.');
+    const fileExtension = url.slice(startIndex + 1);
+
+    if (fileExtension === 'json') {
+      console.log('JSON found in map shareable link'); // left here purposely
+      return true;
+    } 
+  }
+
+  return false;
+}
+
+function placeImage (imageURL, options, newImage = false) {
+  let image;
+  
+  if (newImage) { 
+    image = L.distortableImageOverlay(
+      imageURL,
+      {tooltipText: options.tooltipText}
+    );
+  } else {
+    image = L.distortableImageOverlay(
+      imageURL,
+      {
+        height: options.height,
+        tooltipText: options.tooltipText,
+        // corners: options.corners, <== uncomment this to see the effect of the corners
+      }
+    );
+  }
+
+  map.imgGroup.addLayer(image);
+};
+
+// Reconstruct Map from JSON
+document.addEventListener('DOMContentLoaded', async (event) => {
+  if (mapReconstructionMode) {
+    const url = location.href;
+    
+    if (isJsonDetected(url)) {
+      const jsonDownloadURL = extractJsonFromUrlParams(url); 
+
+      if (jsonDownloadURL) {
+        const imageCollectionObj = await map.imgGroup.recreateImagesFromJsonUrl(jsonDownloadURL); 
+        const avg_cm_per_pixel = imageCollectionObj.avg_cm_per_pixel; // this is made available here for future use
+        
+        // creates multiple images - this applies where multiple images are to be reconstructed
+        if (imageCollectionObj.imgCollectionProps.length > 1) {
+          let imageURL;
+          let options;
+      
+          imageCollectionObj.imgCollectionProps.forEach((imageObj) => {
+            imageURL = imageObj.src;
+            options = {
+              height: imageObj.height,
+              tooltipText: imageObj.tooltipText,
+              corners: imageObj.nodes,
+            };
+            placeImage(imageURL, options, false);
+          });
+      
+          return;
+        }
+
+        // creates single image - this applies where only one image is to be reconstructed
+        const imageObj = imageCollectionObj.imgCollectionProps[0];
+        const imageURL = imageObj[0].src;
+        const options = {
+          height: imageObj[0].height,
+          tooltipText: imageObj[0].tooltipText,
+          corners: imageObj[0].nodes,
+        }
+      
+        placeImage(imageURL, options, false);
+      }
+    } 
+  }
 });
 
 document.addEventListener('click', (event) => {
   if (event.target.classList.contains('place-button')) {
-    const imageURL = event.target.previousElementSibling.dataset.original;
-    const image = L.distortableImageOverlay(imageURL);
-    map.imgGroup.addLayer(image);
+    const imageURL = event.target.previousElementSibling.src;
+    const imageTooltipText = getImageName(imageURL);
+    const options = {tooltipText: imageTooltipText};
+
+    placeImage(imageURL, options, true);
+    return;
   }
 });
+
+// download JSON
+saveMap.addEventListener('click', () => {
+  const jsonImages = map.imgGroup.generateExportJson(true).images;
+    // a check to prevent download of empty file
+    if (jsonImages.length) {
+      const encodedFile = 'text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(jsonImages));
+      const a = document.createElement('a');
+      a.href = 'data:' + encodedFile;
+      const fileName = prompt('Use this file to recover your map’s saved state. Enter filename:');
+      a.download = fileName ? fileName + '.json' : 'MapknitterLite.json';
+      a.click();
+    }
+})
+
+// share map modal
+const shareModal = document.getElementById('shareModal')
+const modality =  new bootstrap.Modal(shareModal)
+shareMapBtn.addEventListener('click', () => {
+  bootstrap.Modal.getInstance(shareModal).show()
+})
