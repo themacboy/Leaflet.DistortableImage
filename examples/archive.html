@@ -23,10 +23,11 @@
   <script src="../dist/leaflet.distortableimage.js"></script>
   <script src="./js/archive.js" defer type="module"></script>
   <script src="./js//modules/paginator.js" type="module" defer></script>
+  <script src="./js/savedMaps.js" defer></script>
 </head>
 <body style="margin:0;">
       <!--Welcome Modal-->
-  <div class="modal fade" id="welcomeModal" aria-labelledby="exampleModalLabel" tabindex="-1" aria-hidden="true">
+  <div class="modal fade" id="welcomeModal" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
           <div class="modal-content bg-light">
             <div class="modal-header d-block">
@@ -49,11 +50,12 @@
             <p>Paste it here to begin:</p>
             <form id="form">
               <input id="input" type="text" class="form-control" placeholder="https://archive.org/details/..." required>
-              <button type="submit" class="btn btn-primary mt-4 mb-5">Begin</button>
+              <button id="beginBtn" type="submit" class="btn btn-primary mt-4 mb-5">Begin</button>
             </form>
-            <p>
+            <p>Alternatively, close this dialogue box then drag image to the tile from your computer. You can also drag a JSON file to the tile to restore your map to previous saved state.</p>
+            <!-- <p>
                 <a href="local.html">Click here</a> to try this offline with local files only.
-              </p>
+            </p> -->
           </div>
         </div>
       </div>
@@ -95,16 +97,55 @@
       </div>
   </div>
     
+  <!-- Saved Maps Modal Start -->
+  <div class="modal fade " id="savedMapsModal" aria-labelledby="savedMapsModalLabel" tabindex="-1" aria-hidden="true" >
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable " >
+          <div class="modal-content bg-light">
+            <div class="modal-header d-block">
+              <div class="d-flex justify-content-between align-items-center">
+                <h2 class="modal-title">Saved Maps</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" ></button>
+              </div>
+               <p>Saving your map in the browser means you can continue knitting when you return to this page in your current browser  <button type="button" id="saveMapBtn" class="btn btn-primary btn-sm"  title="Save map in browser in JSON format">Save Map</button></p>
+              </div>
+             
+            <div class="modal-body d-flex flex-column" id="mapList">
+             
+            </div>
+          </div>
+        </div>
+      </div>
+  </div>
+  <!-- Saved Maps Modal End -->
+
   <i title="Open Sidebar" id="mapToggle" class="fa fa-bars fa-3x " style="position: absolute; right: 0; top:30px; margin: 1rem; z-index: 900; color: white; cursor: pointer;" aria-hidden="true"></i>
-    
-  <div id="map" style="width:100%; height:100%; position:absolute; top:0;"></div>
+  
+  <div id="dropZone" class="flex-item flex-item1">
+    <div id="map" style="width:100%; height:100%; position:absolute; top:0;"></div>
+  </div> 
 
   <div class="offcanvas offcanvas-end" data-bs-backdrop="false" data-bs-keyboard="false" tabindex="1" id="offcanvasRight" aria-labelledby="offcanvasRightLabel">
       <div class="offcanvas-header">
         <button type="button" id="restoreWelcomeModalBtn" class="btn btn-primary btn-md" data-bs-dismiss="offcanvas" aria-label="Close" title="Import images from collection URL">Import</button>
-        <button id="saveMap" type="button" class="btn btn-sm" aria-label="Save map" title="Save map in JSON format" >
-          <i class="fa fa-save fa-" style="font-size:24px" ></i>
+       <div class="dropdown">
+    
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Save/Download Map">
+    <i class="fa fa-save fa-" style="font-size:24px" ></i>
+  </button>
+  <ul class="dropdown-menu">
+    <li  title="Save map locally in JSON format"> 
+      <button id="downloadJSON" type="button" class="btn btn-sm dropdown-item" aria-label="Save map" >
+          Download Map
+        </button></li>
+    <li title="Save map in browser in JSON format"> 
+      <button id="saveMapModalBtn" type="button" class="btn btn-sm dropdown-item" aria-label="Save map" >
+          Save map
         </button>
+      </li>
+  </ul>
+          
+
+</div>
         <button id="shareMapBtn" type="button" class="btn btn-sm" aria-label="Share map" title="Share map " >
           <i class="fa fa-share-alt fa-" style="font-size:24px" ></i>
         </button>
