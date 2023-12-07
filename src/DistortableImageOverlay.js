@@ -134,7 +134,6 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
       'offset': offset,
       'zoom': map.getZoom(),
     };
-
     this.setBounds(L.latLngBounds(this.getCorners()));
   },
 
@@ -249,6 +248,10 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
 
   deactivateTooltip() {
     this.unbindTooltip();
+  },
+
+  getTooltipText() {
+    return this.tooltipText;
   },
 
   setCorners(latlngObj) {

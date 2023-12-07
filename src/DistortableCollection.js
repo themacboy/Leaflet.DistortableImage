@@ -199,35 +199,52 @@ L.DistortableCollection = L.FeatureGroup.extend({
     return reduce / imgs.length;
   },
 
-  // Connects to JSON file and fetches JSON data therein from remote source
+  // connects to JSON file and fetches JSON data therein from remote source
   async fetchRemoteJson(url) {
     let index = 0;
     const imgCollectionProps = [];
 
     try {
       const response = await axios.get(url);
-      if (response.data.images.length > 1) {
-        response.data.images.forEach((data) => {
-          imgCollectionProps[index] = data;
-          index++;
-        });
+      if (response.data.hasOwnProperty('avg_cm_per_pixel')) {
+        if (response.data.collection.length > 1) {
+          response.data.collection.forEach((data) => {
+            imgCollectionProps[index] = data;
+            index++;
+          });
+          return {
+            avg_cm_per_pixel: response.data.avg_cm_per_pixel,
+            imgCollectionProps,
+          };
+        }
+        imgCollectionProps[index] = response.data.collection;
+
         return {
           avg_cm_per_pixel: response.data.avg_cm_per_pixel,
           imgCollectionProps,
         };
-      }
-      imgCollectionProps[index] = response.data.images;
+      } else {
+        if (response.data.length > 1) {
+          response.data.forEach((data) => {
+            imgCollectionProps[index] = data;
+            index++;
+          });
+          return {
+            imgCollectionProps,
+          };
+        }
+        imgCollectionProps[index] = response.data;
 
-      return {
-        avg_cm_per_pixel: response.data.avg_cm_per_pixel,
-        imgCollectionProps,
-      };
+        return {
+          imgCollectionProps,
+        };
+      }
     } catch (err) {
       console.log('err', err);
     }
   },
 
-  // expects url in this format: https://archive.org/download/segeotest/segeotest.json
+  // expects url in this format: https://archive.org/download/mkl-1/mkl-1.json
   async recreateImagesFromJsonUrl(url) {
     let imageCollectionObj = {};
 
@@ -246,19 +263,22 @@ L.DistortableCollection = L.FeatureGroup.extend({
     this.eachLayer(function(layer) {
       if (allImages || this.isCollected(layer)) {
         const sections = layer._image.src.split('/');
-        const filename = sections[sections.length-1];
+        const filename = sections[sections.length - 1];
         const zc = layer.getCorners();
+
         const corners = [
-          {lat: zc[0].lat, lon: zc[0].lng},
-          {lat: zc[1].lat, lon: zc[1].lng},
-          {lat: zc[3].lat, lon: zc[3].lng},
-          {lat: zc[2].lat, lon: zc[2].lng},
+          {lat: zc[0].lat, lon: zc[0].lng || zc[0].lon},
+          {lat: zc[1].lat, lon: zc[1].lng || zc[1].lon},
+          {lat: zc[3].lat, lon: zc[3].lng || zc[3].lon},
+          {lat: zc[2].lat, lon: zc[2].lng || zc[2].lon},
         ];
+
         json.images.push({
           id: layer._leaflet_id,
           src: layer._image.src,
           width: layer._image.width,
           height: layer._image.height,
+          tooltipText: layer.getTooltipText(),
           image_file_name: filename,
           nodes: corners,
           cm_per_pixel: L.ImageUtil.getCmPerPixel(layer),
