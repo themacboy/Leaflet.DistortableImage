@@ -1,3 +1,4 @@
+const arr = [];
 L.DistortableCollection = L.FeatureGroup.extend({
   options: {
     editable: true,
@@ -33,7 +34,6 @@ L.DistortableCollection = L.FeatureGroup.extend({
 
   onRemove() {
     if (this.editing) { this.editing.disable(); }
-
     this.off('layeradd', this._addEvents, this);
     this.off('layerremove', this._removeEvents, this);
   },
@@ -100,6 +100,16 @@ L.DistortableCollection = L.FeatureGroup.extend({
       /* conditional prevents disabled images from flickering multi-select mode */
       if (layer.editing.enabled()) {
         L.DomUtil.toggleClass(e.target, 'collected');
+        // re-order layers by _leaflet_id to match their display order in UI
+        // add new layer to right position and avoid repitition
+        const newArr = arr.every((each) => {
+          return each._leaflet_id !== layer._leaflet_id;
+        });
+        if (newArr) {
+          arr.push(layer);
+        } else {
+          arr.splice(arr.indexOf(layer), 1);
+        }
       }
     }
 
@@ -132,7 +142,7 @@ L.DistortableCollection = L.FeatureGroup.extend({
       layer._dragStartPoints = {};
       layer.deselect();
       for (i = 0; i < 4; i++) {
-        let c = layer.getCorner(i);
+        const c = layer.getCorner(i);
         layer._dragStartPoints[i] = map.latLngToLayerPoint(c);
       }
     });
@@ -174,7 +184,7 @@ L.DistortableCollection = L.FeatureGroup.extend({
     let i;
 
     layersToMove.forEach((layer) => {
-      let movedPoints = {};
+      const movedPoints = {};
       for (i = 0; i < 4; i++) {
         movedPoints[i] = p.transform(layer._dragStartPoints[i]);
       }
@@ -189,26 +199,86 @@ L.DistortableCollection = L.FeatureGroup.extend({
     return reduce / imgs.length;
   },
 
-  generateExportJson() {
+  // connects to JSON file and fetches JSON data therein from remote source
+  async fetchRemoteJson(url) {
+    let index = 0;
+    const imgCollectionProps = [];
+
+    try {
+      const response = await axios.get(url);
+      if (response.data.hasOwnProperty('avg_cm_per_pixel')) {
+        if (response.data.collection.length > 1) {
+          response.data.collection.forEach((data) => {
+            imgCollectionProps[index] = data;
+            index++;
+          });
+          return {
+            avg_cm_per_pixel: response.data.avg_cm_per_pixel,
+            imgCollectionProps,
+          };
+        }
+        imgCollectionProps[index] = response.data.collection;
+
+        return {
+          avg_cm_per_pixel: response.data.avg_cm_per_pixel,
+          imgCollectionProps,
+        };
+      } else {
+        if (response.data.length > 1) {
+          response.data.forEach((data) => {
+            imgCollectionProps[index] = data;
+            index++;
+          });
+          return {
+            imgCollectionProps,
+          };
+        }
+        imgCollectionProps[index] = response.data;
+
+        return {
+          imgCollectionProps,
+        };
+      }
+    } catch (err) {
+      console.log('err', err);
+    }
+  },
+
+  // expects url in this format: https://archive.org/download/mkl-1/mkl-1.json
+  async recreateImagesFromJsonUrl(url) {
+    let imageCollectionObj = {};
+
+    if (url) {
+      imageCollectionObj = await this.fetchRemoteJson(url);
+      return imageCollectionObj;
+    };
+
+    return imageCollectionObj;
+  },
+
+  generateExportJson(allImages = false) {
     const json = {};
     json.images = [];
 
     this.eachLayer(function(layer) {
-      if (this.isCollected(layer)) {
-        let sections = layer._image.src.split('/');
-        let filename = sections[sections.length-1];
-        let zc = layer.getCorners();
-        let corners = [
-          {lat: zc[0].lat, lon: zc[0].lng},
-          {lat: zc[1].lat, lon: zc[1].lng},
-          {lat: zc[3].lat, lon: zc[3].lng},
-          {lat: zc[2].lat, lon: zc[2].lng},
+      if (allImages || this.isCollected(layer)) {
+        const sections = layer._image.src.split('/');
+        const filename = sections[sections.length - 1];
+        const zc = layer.getCorners();
+
+        const corners = [
+          {lat: zc[0].lat, lon: zc[0].lng || zc[0].lon},
+          {lat: zc[1].lat, lon: zc[1].lng || zc[1].lon},
+          {lat: zc[3].lat, lon: zc[3].lng || zc[3].lon},
+          {lat: zc[2].lat, lon: zc[2].lng || zc[2].lon},
         ];
+
         json.images.push({
-          id: this.getLayerId(layer),
+          id: layer._leaflet_id,
           src: layer._image.src,
           width: layer._image.width,
           height: layer._image.height,
+          tooltipText: layer.getTooltipText(),
           image_file_name: filename,
           nodes: corners,
           cm_per_pixel: L.ImageUtil.getCmPerPixel(layer),
@@ -218,7 +288,6 @@ L.DistortableCollection = L.FeatureGroup.extend({
 
     json.images = json.images.reverse();
     json.avg_cm_per_pixel = this._getAvgCmPerPixel(json.images);
-
     return json;
   },
 });

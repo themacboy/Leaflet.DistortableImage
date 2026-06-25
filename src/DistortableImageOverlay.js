@@ -1,5 +1,4 @@
 L.DistortableImageOverlay = L.ImageOverlay.extend({
-
   options: {
     height: 200,
     crossOrigin: true,
@@ -8,6 +7,8 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
     editable: true,
     mode: 'distort',
     selected: false,
+    interactive: true,
+    tooltipText: '',
   },
 
   initialize(url, options) {
@@ -19,6 +20,9 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
     this._selected = this.options.selected;
     this._url = url;
     this.rotation = {};
+
+    this.interactive = this.options.interactive;
+    this.tooltipText = this.options.tooltipText;
   },
 
   onAdd(map) {
@@ -40,7 +44,7 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
       this._initImageDimensions();
 
       if (this.options.rotation) {
-        const units = this.options.rotation.deg ? 'deg' : 'rad';
+        const units = this.options.rotation.deg >= 0 ? 'deg' : 'rad';
         this.setAngle(this.options.rotation[units], units);
       } else {
         this.rotation = {deg: 0, rad: 0};
@@ -81,6 +85,9 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
     }
 
     this.fire('add');
+
+    L.DomEvent.on(this.getElement(), 'mousemove', this.activateTooltip, this);
+    L.DomEvent.on(this.getElement(), 'mouseout', this.closeTooltip, this);
   },
 
   onRemove(map) {
@@ -96,6 +103,9 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
     this.fire('remove');
 
     L.ImageOverlay.prototype.onRemove.call(this, map);
+
+    L.DomEvent.on(this.getElement(), 'mouseout', this.closeTooltip, this);
+    L.DomEvent.off(this.getElement(), 'mousemove', this.deactivateTooltip, this);
   },
 
   _initImageDimensions() {
@@ -124,7 +134,6 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
       'offset': offset,
       'zoom': map.getZoom(),
     };
-
     this.setBounds(L.latLngBounds(this.getCorners()));
   },
 
@@ -227,6 +236,24 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
     }
   },
 
+  activateTooltip() {
+    if (!this._selected) {
+      this.bindTooltip(this.tooltipText, {direction: 'top'}).openTooltip();
+    }
+  },
+
+  closeToolTip() {
+    this.closeTooltip();
+  },
+
+  deactivateTooltip() {
+    this.unbindTooltip();
+  },
+
+  getTooltipText() {
+    return this.tooltipText;
+  },
+
   setCorners(latlngObj) {
     const map = this._map;
     const zoom = map.getZoom();
@@ -234,7 +261,7 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
     let i = 0;
 
     // this is to fix https://github.com/publiclab/Leaflet.DistortableImage/issues/402
-    for (let k in latlngObj) {
+    for (const k in latlngObj) {
       if (this._cornerExceedsMapLats(zoom, latlngObj[k], map)) {
         // calling reset / update w/ the same corners bc it prevents a marker flicker for rotate
         this.setBounds(L.latLngBounds(this.getCorners()));
@@ -243,7 +270,7 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
       }
     }
 
-    for (let k in latlngObj) {
+    for (const k in latlngObj) {
       this._corners[i] = latlngObj[k];
       i += 1;
     }
@@ -266,7 +293,7 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
     const edit = this.editing;
     let i = 0;
 
-    for (let k in pointsObj) {
+    for (const k in pointsObj) {
       const corner = map.layerPointToLatLng(pointsObj[k]);
 
       if (this._cornerExceedsMapLats(zoom, corner, map)) {
@@ -277,7 +304,7 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
       }
     }
 
-    for (let k in pointsObj) {
+    for (const k in pointsObj) {
       this._corners[i] = map.layerPointToLatLng(pointsObj[k]);
       i += 1;
     }
@@ -299,7 +326,7 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
     const center = map.project(this.getCenter());
     let i;
     let p;
-    let scaledCorners = {};
+    const scaledCorners = {};
 
     if (scale === 0) { return; }
 
@@ -356,7 +383,7 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
   rotateBy(angle, unit = 'deg') {
     const map = this._map;
     const center = map.project(this.getCenter());
-    let corners = {};
+    const corners = {};
     let i;
     let p;
     let q;
@@ -383,7 +410,7 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
     const map = this._map;
     let i;
     let p;
-    let transCorners = {};
+    const transCorners = {};
     const delta = map.project(formerPoint).subtract(map.project(newPoint));
 
     for (i = 0; i < 4; i++) {
@@ -507,7 +534,7 @@ L.DistortableImageOverlay = L.ImageOverlay.extend({
     const offset = latLngToCartesian(this.getCorner(0));
     const w = this.getElement().offsetWidth || 500;
     const h = this.getElement().offsetHeight || 375;
-    let c = [];
+    const c = [];
     let j;
     /* Convert corners to container points (i.e. cartesian coordinates). */
     for (j = 0; j < 4; j++) {
