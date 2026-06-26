@@ -1,7 +1,6 @@
-let colours = ['black', 'gray', 'white', 'red', 'green', 'yellow', 'blue', 'orange']; // Set numeric values from 0 to 100.
-// let colours = ['black', 'silver', 'gray', 'white', 'maroon', 'red', 'purple', 'fuchsia', 'green', 'lime', 'olive', 'yellow', 'navy', 'blue', 'teal', 'aqua']; // Set numeric values from 0 to 100.
+const colours = ['black', 'gray', 'white', 'red', 'green', 'yellow', 'blue', 'orange'];
 
-// Add custom CSS scripts and overwrites. Pending for better implementation of CSSStyleSheet in browsers.
+// Custom CSS for the colour subtoolbar items
 const subtoolbarCss = new CSSStyleSheet();
 subtoolbarCss.replaceSync(
     `.leaflet-toolbar-icon-vertical {
@@ -32,39 +31,22 @@ subtoolbarCss.insertRule(
 );
 document.adoptedStyleSheets = [subtoolbarCss];
 
-if ([...document.styleSheets].every((sheet => sheet.title != 'ColorizeSVG_colours_list'))) {
-  const colourList = new CSSStyleSheet();
-  // colourList.title = 'ColorizeSVG_colours_list';
-  /*
+// Generate one CSS class per colour to apply via _setColour()
+const colourList = new CSSStyleSheet();
+colours.forEach((o) => {
   colourList.insertRule(
-      `.colour_orange {
-            filter: sepia(52%) saturate(917%) hue-rotate(354deg) brightness(95%) contrast(114%);
-      }
+      `.colour_${o} {
+          fill:${o} !important;
+          stroke:${o} !important;
+          color:${o} !important;
+        }
       `
   );
+});
+document.adoptedStyleSheets = [...document.adoptedStyleSheets, colourList];
 
-  colourList.insertRule(
-      `.colour_blue {
-        filter: sepia(99%) saturate(6892%) hue-rotate(248deg) brightness(96%) contrast(144%);
-      }
-      `
-  );
-  */
-  colours.map((o) => {
-    colourList.insertRule(
-        `.colour_${o} {
-            fill:${o} !important;
-            stroke:${o} !important;
-            color:${o} !important;
-          }
-        `
-    );
-  });
-
-  document.adoptedStyleSheets = [...document.adoptedStyleSheets, colourList];
-}
-
-colours = colours.map((o) => {
+// Generate one toolbar action per colour
+const colourActions = colours.map((o) => {
   return L.EditAction.extend({
     options: {
       toolbarIcon: {
@@ -78,40 +60,81 @@ colours = colours.map((o) => {
       this._overlay.editing._setColour(`colour_${o}`);
 
       const img = this._overlay.getElement();
-      console.log(img.src);
-      console.log(img.alt);
-      console.log(this._overlay.options.alt);
-      console.log(img.getAttribute('alt'));
 
       fetch(this._overlay.options.alt)
           .then(response => response.text())
-          .then( (response) => {
+          .then((svgText) => {
             const parser = new DOMParser();
-            const svg = parser.parseFromString(response, 'image/svg+xml').documentElement;
+            const svg = parser.parseFromString(svgText, 'image/svg+xml').documentElement;
 
-            if (!svg.getAttribute('color') || svg.getAttribute('color') === '000' || svg.getAttribute('color') === '#030104') { svg.setAttribute('color', o); };
-            if (!svg.getAttribute('fill') || svg.getAttribute('fill') === '000' || svg.getAttribute('fill') === '#030104') { svg.setAttribute('fill', o); };
-            if (!svg.getAttribute('stroke') || svg.getAttribute('stroke') === '000' || svg.getAttribute('stroke') === '#030104') { svg.setAttribute('stroke', o); };
+            // Colors considered "black" that should be overridden
+            const blackValues = ['#000', '#000000', 'black', '#030104', ''];
+            const whiteValues = ['#fff', '#ffffff', 'white', 'none', 'transparent'];
 
-            svg.querySelectorAll('[fill]').forEach((elem) => {
-              if (elem.getAttribute('fill') === '#000' || elem.getAttribute('fill') === '#030104') {
-                elem.setAttribute('fill', o);
+            const isWhiteOrNone = val => whiteValues.includes((val || '').toLowerCase().trim());
+            const isBlack = val => blackValues.includes((val || '').toLowerCase().trim());
+
+            // Apply colour to root SVG element attributes if they are black
+            ['color', 'fill', 'stroke'].forEach((attr) => {
+              if (isBlack(svg.getAttribute(attr))) {
+                svg.setAttribute(attr, o);
               }
             });
 
-            svg.querySelectorAll('[stroke]').forEach((elem) => {
-              if (elem.getAttribute('stroke') === '#000' || elem.getAttribute('stroke') === '#030104') {
+            // Iterate through all shapes and text
+            svg.querySelectorAll('path, rect, circle, ellipse, polygon, polyline, line, text').forEach((elem) => {
+              const fill = elem.getAttribute('fill');
+              const stroke = elem.getAttribute('stroke');
+              const tag = elem.tagName.toLowerCase();
+
+              // Handle Fill
+              if (!fill) {
+                // If it has no fill, check if it inherits white or none from a parent
+                let parent = elem.parentNode;
+                let inheritsWhite = false;
+                while (parent && parent.tagName && parent.tagName.toLowerCase() !== 'svg') {
+                  const pFill = parent.getAttribute('fill');
+                  if (pFill) {
+                    if (isWhiteOrNone(pFill)) inheritsWhite = true;
+                    break;
+                  }
+                  parent = parent.parentNode;
+                }
+                
+                if (!inheritsWhite) {
+                  elem.setAttribute('fill', o);
+                }
+              } else if (isBlack(fill)) {
+                elem.setAttribute('fill', o);
+              }
+
+              // Handle Stroke
+              if (!stroke) {
+                // Default stroke is none. We only add a colored stroke if it's a line/polyline
+                // or if it explicitly has fill="none" (meaning it's an outline shape).
+                if (tag === 'line' || tag === 'polyline' || (fill && fill.toLowerCase().trim() === 'none')) {
+                  elem.setAttribute('stroke', o);
+                }
+              } else if (isBlack(stroke)) {
                 elem.setAttribute('stroke', o);
               }
             });
 
-            img.src = URL.createObjectURL( new Blob( [new XMLSerializer().serializeToString( svg )], {type: 'image/svg+xml'} ) );
+            // Save current corners before changing src, because the new
+            // load event will trigger _initImageDimensions() and reset position.
+            const savedCorners = this._overlay.getCorners().map(c => L.latLng(c));
 
-            this._overlay._reset();
-            /*
-            t_parametre.corners.forEach ((t_corner, t_index) => {
-              t_element.setCorner (t_index, L.latLng (t_corner));
-            });*/
+            img.addEventListener('load', () => {
+              const corners = {};
+              savedCorners.forEach((c, i) => { corners[i] = c; });
+              this._overlay.setCorners(corners);
+            }, {once: true});
+
+            this._overlay.options.svgColor = o; // Save color for future restorations
+
+            img.src = URL.createObjectURL(
+                new Blob([new XMLSerializer().serializeToString(svg)], {type: 'image/svg+xml'})
+            );
           });
     },
   });
@@ -122,7 +145,7 @@ L.ColorizesvgToolbar2 = L.Toolbar2.extend({
     className: '',
     filter: function() { return true; },
     actions: [],
-    style: `translate(-1px, -${ ((colours.length + 1) * 30)}px)`,
+    style: `translate(-1px, -${(colourActions.length + 1) * 30}px)`,
   },
 
   appendToContainer(container) {
@@ -133,7 +156,7 @@ L.ColorizesvgToolbar2 = L.Toolbar2.extend({
 
     this._container = container;
     this._ul = L.DomUtil.create('ul', className, container);
-    this._ul.style.transform = ( this.options.style ) ? this.options.style : '';
+    this._ul.style.transform = (this.options.style) ? this.options.style : '';
 
     // Ensure that clicks, drags, etc. don't bubble up to the map.
     // These are the map events that the L.Draw.Polyline handler listens for.
@@ -147,7 +170,9 @@ L.ColorizesvgToolbar2 = L.Toolbar2.extend({
     ];
 
     for (j = 0, m = this._disabledEvents.length; j < m; j++) {
-      L.DomEvent.on(this._ul, this._disabledEvents[j], L.DomEvent.stopPropagation);
+      L.DomEvent.on(
+        this._ul, this._disabledEvents[j], L.DomEvent.stopPropagation
+      );
     }
 
     /* Instantiate each toolbar action and add its corresponding toolbar icon. */
@@ -162,20 +187,33 @@ L.ColorizesvgToolbar2 = L.Toolbar2.extend({
 
 
 L.ColorizesvgAction = L.EditAction.extend({
+  // Returns true if the overlay image is an SVG (by URL or MIME type).
+  // Checks options.alt (project-specific), _url (Leaflet standard) and
+  // img.src (covers data:image/svg+xml and blob URLs after first colorization).
+  _isSvgOverlay(overlay) {
+    const url = (overlay.options.alt || overlay._url || '').toLowerCase();
+    if (url.endsWith('.svg') || url.includes('image/svg+xml') || url.includes('image/svg')) {
+      return true;
+    }
+    const src = (overlay.getElement() ? overlay.getElement().src : '').toLowerCase();
+    return src.includes('image/svg+xml') || src.endsWith('.svg');
+  },
+
   initialize(map, overlay, options) {
     const edit = overlay.editing;
     const mode = edit._mode;
+    const isSvg = this._isSvgOverlay(overlay);
 
     options = options || {};
     options.toolbarIcon = {
       svg: true,
       html: 'colours_cercle',
-      tooltip: 'Set custom SVG color',
-      className: mode === 'lock' ? 'disabled' : '',
+      tooltip: isSvg ? 'Set custom SVG color' : 'Only available for SVG images',
+      className: (mode === 'lock' || !isSvg) ? 'disabled' : '',
     };
 
     options.subToolbar = new L.ColorizesvgToolbar2({
-      actions: colours,
+      actions: colourActions,
     });
 
     L.DistortableImage.action_map.o = mode === 'lock' ? '' : '_setColour';
@@ -184,6 +222,8 @@ L.ColorizesvgAction = L.EditAction.extend({
   },
 
   addHooks() {
+    if (!this._isSvgOverlay(this._overlay)) return;
+
     const link = this._link;
     if (L.DomUtil.hasClass(link, 'subtoolbar_enabled')) {
       L.DomUtil.removeClass(link, 'subtoolbar_enabled');
@@ -192,7 +232,7 @@ L.ColorizesvgAction = L.EditAction.extend({
       }, 100);
     } else {
       L.DomUtil.addClass(link, 'subtoolbar_enabled');
-    };
+    }
 
     L.IconUtil.toggleXlink(link, 'colours_cercle', 'cancel');
     L.IconUtil.toggleTitle(link, 'Make SVG colored', 'Cancel');
