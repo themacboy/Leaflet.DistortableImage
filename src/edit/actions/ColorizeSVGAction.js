@@ -191,6 +191,13 @@ L.ColorizesvgToolbar2 = L.Toolbar2.extend({
 
 
 L.ColorizesvgAction = L.EditAction.extend({
+  options: {
+    title: 'Set custom SVG color',
+    titleDisabled: 'Only available for SVG images',
+    titleActive: 'Make SVG colored',
+    titleCancel: 'Cancel',
+  },
+
   // Returns true if the overlay image is an SVG (by URL or MIME type).
   // Checks options.alt (project-specific), _url (Leaflet standard) and
   // img.src (covers data:image/svg+xml and blob URLs after first colorization).
@@ -209,20 +216,22 @@ L.ColorizesvgAction = L.EditAction.extend({
     const isSvg = this._isSvgOverlay(overlay);
 
     options = options || {};
-    options.toolbarIcon = {
+    L.Util.setOptions(this, options);
+
+    this.options.toolbarIcon = {
       svg: true,
       html: 'colours_cercle',
-      tooltip: isSvg ? 'Set custom SVG color' : 'Only available for SVG images',
+      tooltip: isSvg ? this.options.title : this.options.titleDisabled,
       className: (mode === 'lock' || !isSvg) ? 'disabled' : '',
     };
 
-    options.subToolbar = new L.ColorizesvgToolbar2({
+    this.options.subToolbar = new L.ColorizesvgToolbar2({
       actions: colourActions,
     });
 
     L.DistortableImage.action_map.o = mode === 'lock' ? '' : '_setColour';
 
-    L.EditAction.prototype.initialize.call(this, map, overlay, options);
+    L.EditAction.prototype.initialize.call(this, map, overlay, this.options);
   },
 
   addHooks() {
@@ -239,6 +248,6 @@ L.ColorizesvgAction = L.EditAction.extend({
     }
 
     L.IconUtil.toggleXlink(link, 'colours_cercle', 'cancel');
-    L.IconUtil.toggleTitle(link, 'Make SVG colored', 'Cancel');
+    L.IconUtil.toggleTitle(link, this.options.titleActive, this.options.titleCancel);
   },
 });
