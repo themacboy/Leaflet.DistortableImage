@@ -23,7 +23,7 @@ Per establir aquesta viabilitat, l'algoritme analitza:
 
 L'acció implementa un enfocament basat en DOM-parsing, descarregant en memòria el codi font del vector, editant-lo i creant un Blob intern per tornar-lo a passar com a nova imatge al Canvas/Mapa.
 
-### Origen de les dades (Fetch)
+### Origen de les dades (Fetch i Lazy Caching)
 S'obté el contingut mitjançant `fetch()`:
 ```javascript
 const fetchUrl = (this._overlay.options.isText && this._overlay.options.src)
@@ -31,6 +31,17 @@ const fetchUrl = (this._overlay.options.isText && this._overlay.options.src)
   : this._overlay.options.alt;
 ```
 D'aquesta manera s'assegura la integració no només d'icones clàssiques sinó també d'eines externes complexes, com l'eina de "TextTool", que defineixen dinàmicament el seu origen.
+
+**Lazy Caching i Solució a CORS:**
+Per evitar peticions redundants a la xarxa cada vegada que l'usuari clica un color, l'acció implementa un *Lazy Cache*: la primera vegada que es descarrega l'XML de l'SVG, es guarda a la propietat de memòria `this._overlay.options.originalSvgText`. Els successius canvis de color llegiran directament d'aquesta propietat de forma sincrònica.
+
+Això a més proporciona una porta posterior per saltar-se bloquejos de **CORS** per imatges d'altres dominis. Un desenvolupador pot instanciar la imatge passant l'XML directament:
+```javascript
+L.distortableImageOverlay('http://domini-extern.com/icona.svg', {
+    originalSvgText: '<svg>...</svg>'
+}).addTo(map);
+```
+En fer-ho, `ColorizeSVGAction` no farà cap `fetch()` a la xarxa, utilitzant la memòria cau proporcionada automàticament.
 
 ### Modificació intel·ligent del codi (Parsing)
 S'evita el simple reemplaçament global de cadenes (p. ex. canviar totes les aparicions d'un string) a favor del `DOMParser` per respectar l'herència de l'arquitectura d'arbres SVG:
