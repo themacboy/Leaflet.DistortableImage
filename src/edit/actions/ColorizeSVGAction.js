@@ -1,4 +1,4 @@
-const colours = ['black', 'gray', 'white', 'red', 'green', 'yellow', 'blue', 'orange'];
+const colours = ['black', 'gray', 'white', 'red', 'green', 'cyan', 'blue', 'purple', 'orange', 'brown'];
 
 // Custom CSS for the colour subtoolbar items
 const subtoolbarCss = new CSSStyleSheet();
@@ -66,24 +66,31 @@ const colourActions = colours.map((o) => {
         const svg = parser.parseFromString(svgText, 'image/svg+xml').documentElement;
 
         // Colors considered "black" that should be overridden
-        const blackValues = ['#000', '#000000', 'black', ''];
+        const blackValues = ['#000', '#000000', 'black'];
         const whiteValues = ['#fff', '#ffffff', 'white', 'none', 'transparent'];
 
-        const isWhiteOrNone = val => whiteValues.includes((val || '').toLowerCase().trim());
-        const isBlack = val => blackValues.includes((val || '').toLowerCase().trim());
+        const isWhiteOrNone = val => val && whiteValues.includes(val.toLowerCase().trim());
+        const isBlack = val => val && blackValues.includes(val.toLowerCase().trim());
 
-        // Apply colour to root SVG element attributes if they are black
+        // Apply colour to root SVG element attributes if they are explicitly black
         ['color', 'fill', 'stroke'].forEach((attr) => {
-          if (isBlack(svg.getAttribute(attr))) {
+          if (svg.hasAttribute(attr) && isBlack(svg.getAttribute(attr))) {
             svg.setAttribute(attr, o);
           }
         });
 
-        // Iterate through all shapes and text
-        svg.querySelectorAll('path, rect, circle, ellipse, polygon, polyline, line, text').forEach((elem) => {
+        // Iterate through all shapes, text and groups
+        svg.querySelectorAll('path, rect, circle, ellipse, polygon, polyline, line, text, g').forEach((elem) => {
           const fill = elem.getAttribute('fill');
           const stroke = elem.getAttribute('stroke');
           const tag = elem.tagName.toLowerCase();
+
+          // Groups only need explicit blacks recolored. Auto-filling them would break inheritance unexpectedly.
+          if (tag === 'g') {
+            if (elem.hasAttribute('fill') && isBlack(fill)) elem.setAttribute('fill', o);
+            if (elem.hasAttribute('stroke') && isBlack(stroke)) elem.setAttribute('stroke', o);
+            return;
+          }
 
           // Handle Fill
           if (!fill) {
