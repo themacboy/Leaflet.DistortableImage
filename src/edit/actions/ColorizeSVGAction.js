@@ -3,7 +3,7 @@ const colours = ['black', 'gray', 'white', 'red', 'green', 'yellow', 'blue', 'or
 // Custom CSS for the colour subtoolbar items
 const subtoolbarCss = new CSSStyleSheet();
 subtoolbarCss.replaceSync(
-    `.leaflet-toolbar-icon-vertical {
+  `.leaflet-toolbar-icon-vertical {
         box-sizing: border-box !important;
         display: block !important;
         width: 30px !important;
@@ -25,7 +25,7 @@ subtoolbarCss.replaceSync(
 );
 
 subtoolbarCss.insertRule(
-    `.leaflet-toolbar-1 li:first-child a {
+  `.leaflet-toolbar-1 li:first-child a {
         border-radius: 4px 4px 0px 0px !important;
     }`
 );
@@ -35,7 +35,7 @@ document.adoptedStyleSheets = [subtoolbarCss];
 const colourList = new CSSStyleSheet();
 colours.forEach((o) => {
   colourList.insertRule(
-      `.colour_${o} {
+    `.colour_${o} {
           fill:${o} !important;
           stroke:${o} !important;
           color:${o} !important;
@@ -61,81 +61,85 @@ const colourActions = colours.map((o) => {
 
       const img = this._overlay.getElement();
 
-      fetch(this._overlay.options.alt)
-          .then(response => response.text())
-          .then((svgText) => {
-            const parser = new DOMParser();
-            const svg = parser.parseFromString(svgText, 'image/svg+xml').documentElement;
+      const fetchUrl = (this._overlay.options.isText && this._overlay.options.src)
+        ? this._overlay.options.src
+        : this._overlay.options.alt;
 
-            // Colors considered "black" that should be overridden
-            const blackValues = ['#000', '#000000', 'black', '#030104', ''];
-            const whiteValues = ['#fff', '#ffffff', 'white', 'none', 'transparent'];
+      fetch(fetchUrl)
+        .then(response => response.text())
+        .then((svgText) => {
+          const parser = new DOMParser();
+          const svg = parser.parseFromString(svgText, 'image/svg+xml').documentElement;
 
-            const isWhiteOrNone = val => whiteValues.includes((val || '').toLowerCase().trim());
-            const isBlack = val => blackValues.includes((val || '').toLowerCase().trim());
+          // Colors considered "black" that should be overridden
+          const blackValues = ['#000', '#000000', 'black', ''];
+          const whiteValues = ['#fff', '#ffffff', 'white', 'none', 'transparent'];
 
-            // Apply colour to root SVG element attributes if they are black
-            ['color', 'fill', 'stroke'].forEach((attr) => {
-              if (isBlack(svg.getAttribute(attr))) {
-                svg.setAttribute(attr, o);
+          const isWhiteOrNone = val => whiteValues.includes((val || '').toLowerCase().trim());
+          const isBlack = val => blackValues.includes((val || '').toLowerCase().trim());
+
+          // Apply colour to root SVG element attributes if they are black
+          ['color', 'fill', 'stroke'].forEach((attr) => {
+            if (isBlack(svg.getAttribute(attr))) {
+              svg.setAttribute(attr, o);
+            }
+          });
+
+          // Iterate through all shapes and text
+          svg.querySelectorAll('path, rect, circle, ellipse, polygon, polyline, line, text').forEach((elem) => {
+            const fill = elem.getAttribute('fill');
+            const stroke = elem.getAttribute('stroke');
+            const tag = elem.tagName.toLowerCase();
+
+            // Handle Fill
+            if (!fill) {
+              // If it has no fill, check if it inherits white or none from a parent
+              let parent = elem.parentNode;
+              let inheritsWhite = false;
+              while (parent && parent.tagName && parent.tagName.toLowerCase() !== 'svg') {
+                const pFill = parent.getAttribute('fill');
+                if (pFill) {
+                  if (isWhiteOrNone(pFill)) inheritsWhite = true;
+                  break;
+                }
+                parent = parent.parentNode;
               }
-            });
 
-            // Iterate through all shapes and text
-            svg.querySelectorAll('path, rect, circle, ellipse, polygon, polyline, line, text').forEach((elem) => {
-              const fill = elem.getAttribute('fill');
-              const stroke = elem.getAttribute('stroke');
-              const tag = elem.tagName.toLowerCase();
-
-              // Handle Fill
-              if (!fill) {
-                // If it has no fill, check if it inherits white or none from a parent
-                let parent = elem.parentNode;
-                let inheritsWhite = false;
-                while (parent && parent.tagName && parent.tagName.toLowerCase() !== 'svg') {
-                  const pFill = parent.getAttribute('fill');
-                  if (pFill) {
-                    if (isWhiteOrNone(pFill)) inheritsWhite = true;
-                    break;
-                  }
-                  parent = parent.parentNode;
-                }
-                
-                if (!inheritsWhite) {
-                  elem.setAttribute('fill', o);
-                }
-              } else if (isBlack(fill)) {
+              if (!inheritsWhite) {
                 elem.setAttribute('fill', o);
               }
+            } else if (isBlack(fill)) {
+              elem.setAttribute('fill', o);
+            }
 
-              // Handle Stroke
-              if (!stroke) {
-                // Default stroke is none. We only add a colored stroke if it's a line/polyline
-                // or if it explicitly has fill="none" (meaning it's an outline shape).
-                if (tag === 'line' || tag === 'polyline' || (fill && fill.toLowerCase().trim() === 'none')) {
-                  elem.setAttribute('stroke', o);
-                }
-              } else if (isBlack(stroke)) {
+            // Handle Stroke
+            if (!stroke) {
+              // Default stroke is none. We only add a colored stroke if it's a line/polyline
+              // or if it explicitly has fill="none" (meaning it's an outline shape).
+              if (tag === 'line' || tag === 'polyline' || (fill && fill.toLowerCase().trim() === 'none')) {
                 elem.setAttribute('stroke', o);
               }
-            });
-
-            // Save current corners before changing src, because the new
-            // load event will trigger _initImageDimensions() and reset position.
-            const savedCorners = this._overlay.getCorners().map(c => L.latLng(c));
-
-            img.addEventListener('load', () => {
-              const corners = {};
-              savedCorners.forEach((c, i) => { corners[i] = c; });
-              this._overlay.setCorners(corners);
-            }, {once: true});
-
-            this._overlay.options.svgColor = o; // Save color for future restorations
-
-            img.src = URL.createObjectURL(
-                new Blob([new XMLSerializer().serializeToString(svg)], {type: 'image/svg+xml'})
-            );
+            } else if (isBlack(stroke)) {
+              elem.setAttribute('stroke', o);
+            }
           });
+
+          // Save current corners before changing src, because the new
+          // load event will trigger _initImageDimensions() and reset position.
+          const savedCorners = this._overlay.getCorners().map(c => L.latLng(c));
+
+          img.addEventListener('load', () => {
+            const corners = {};
+            savedCorners.forEach((c, i) => { corners[i] = c; });
+            this._overlay.setCorners(corners);
+          }, { once: true });
+
+          this._overlay.options.svgColor = o; // Save color for future restorations
+
+          img.src = URL.createObjectURL(
+            new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' })
+          );
+        });
     },
   });
 });
@@ -143,7 +147,7 @@ const colourActions = colours.map((o) => {
 L.ColorizesvgToolbar2 = L.Toolbar2.extend({
   options: {
     className: '',
-    filter: function() { return true; },
+    filter: function () { return true; },
     actions: [],
     style: `translate(-1px, -${(colourActions.length + 1) * 30}px)`,
   },
