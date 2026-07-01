@@ -378,10 +378,107 @@ L.DistortableImage.Edit = L.Handler.extend({
 
     if (!this.hasTool(L.ColorizesvgAction)) { return; }
 
-    const classes = L.DomUtil.getClass(image).split(',');
-    classes.filter( cla => !(cla.includes('colour_')));
-    L.DomUtil.setClass(image, [...classes.filter( cla => !(cla.includes('colour_'))), this._colour].join(' '));
     image.setAttribute('data-colour', this._colour);
+    this._overlay.options.svgColor = o;
+
+    const processSvgText = (svgText) => {
+      const parser = new DOMParser();
+      const svg = parser.parseFromString(svgText, 'image/svg+xml').documentElement;
+
+      // Colors considered "black" that should be overridden
+      const blackValues = ['#000', '#000000', 'black'];
+      const whiteValues = ['#fff', '#ffffff', 'white', 'none', 'transparent'];
+
+      const isWhiteOrNone = (val) =>
+        val && whiteValues.includes(val.toLowerCase().trim());
+      const isBlack = (val) =>
+        val && blackValues.includes(val.toLowerCase().trim());
+
+      // Apply colour to root SVG element attributes if they are explicitly black
+      ['color', 'fill', 'stroke'].forEach((attr) => {
+        if (svg.hasAttribute(attr) && isBlack(svg.getAttribute(attr))) {
+          svg.setAttribute(attr, o);
+        }
+      });
+
+      // Iterate through all shapes, text and groups
+      svg.querySelectorAll('path, rect, circle, ellipse, polygon, polyline, line, text, g').forEach((elem) => {
+        const fill = elem.getAttribute('fill');
+        const stroke = elem.getAttribute('stroke');
+        const tag = elem.tagName.toLowerCase();
+
+        // Groups only need explicit blacks recolored. Auto-filling them would break inheritance unexpectedly.
+        if (tag === 'g') {
+          if (elem.hasAttribute('fill') && isBlack(fill)) elem.setAttribute('fill', o);
+          if (elem.hasAttribute('stroke') && isBlack(stroke)) elem.setAttribute('stroke', o);
+          return;
+        }
+
+        // Handle Fill
+        if (!fill) {
+          // If it has no fill, check if it inherits white or none from a parent
+          let parent = elem.parentNode;
+          let inheritsWhite = false;
+          while (parent && parent.tagName && parent.tagName.toLowerCase() !== 'svg') {
+            const pFill = parent.getAttribute('fill');
+            if (pFill) {
+              if (isWhiteOrNone(pFill)) inheritsWhite = true;
+              break;
+            }
+            parent = parent.parentNode;
+          }
+
+          if (!inheritsWhite) {
+            elem.setAttribute('fill', o);
+          }
+        } else if (isBlack(fill)) {
+          elem.setAttribute('fill', o);
+        }
+
+        // Handle Stroke
+        if (!stroke) {
+          // Default stroke is none. We only add a colored stroke if it's a line/polyline
+          // or if it explicitly has fill="none" (meaning it's an outline shape).
+          if (tag === 'line' || tag === 'polyline' || (fill && fill.toLowerCase().trim() === 'none')) {
+            elem.setAttribute('stroke', o);
+          }
+        } else if (isBlack(stroke)) {
+          elem.setAttribute('stroke', o);
+        }
+      });
+
+      // Save current corners before changing src, because the new
+      // load event will trigger _initImageDimensions() and reset position.
+      const savedCorners = this._overlay.getCorners().map(c => L.latLng(c));
+
+      image.addEventListener('load', () => {
+        const corners = {};
+        savedCorners.forEach((c, i) => { corners[i] = c; });
+        this._overlay.setCorners(corners);
+      }, {once: true});
+
+      image.src = URL.createObjectURL(
+          new Blob(
+              [new XMLSerializer().serializeToString(svg)],
+              {type: 'image/svg+xml'}
+          )
+      );
+    };
+
+    if (this._overlay.options.originalSvgText) {
+      processSvgText(this._overlay.options.originalSvgText);
+    } else {
+      const fetchUrl = this._overlay.options.isText && this._overlay.options.src ?
+        this._overlay.options.src :
+        this._overlay.options.alt;
+
+      fetch(fetchUrl)
+          .then((response) => response.text())
+          .then((svgText) => {
+            this._overlay.options.originalSvgText = svgText;
+            processSvgText(svgText);
+          });
+    }
 
     this._refresh();
   },
