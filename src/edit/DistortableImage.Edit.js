@@ -372,6 +372,14 @@ L.DistortableImage.Edit = L.Handler.extend({
     this._refresh();
   },
 
+  /**
+   * Applies a specific color to the SVG image overlay.
+   * It parses the original SVG, overrides elements that are explicitly black
+   * or inherit black colors, and replaces them with the target color.
+   * The resulting SVG is rendered as a Blob on the overlay.
+   *
+   * @param {String} o - The color code to apply (e.g. 'red', '#000000').
+   */
   _setColour(o) {
     const image = this._overlay.getElement();
     this._colour = o;

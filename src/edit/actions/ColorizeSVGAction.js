@@ -31,7 +31,11 @@ subtoolbarCss.insertRule(
 );
 document.adoptedStyleSheets = [subtoolbarCss];
 
-// Generate one toolbar action per colour
+/**
+ * Generate one toolbar action constructor per colour.
+ * Each action displays a UI button and triggers the overlay's
+ * editing._setColour method upon being hooked (clicked/activated).
+ */
 const colourActions = colours.map((o) => {
   return L.EditAction.extend({
     options: {
@@ -94,6 +98,10 @@ L.ColorizesvgToolbar2 = L.Toolbar2.extend({
 });
 
 
+/**
+ * The main action (toolbar button) that reveals the colour sub-toolbar.
+ * It is only enabled for SVG images, checking URL and mime types.
+ */
 L.ColorizesvgAction = L.EditAction.extend({
   options: {
     title: 'Set custom SVG color',
